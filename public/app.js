@@ -450,13 +450,14 @@ function convertMacroToATK(macro) {
         if (comp.delay) {
             lastDelay = comp.delay.durationMs || 50;
         } else if (comp.keyboard) {
-            const keyCode = comp.keyboard.hidCode || comp.keyboard.keyCode;
-            if (keyCode && GHUB_TO_ATK_KEYCODE[keyCode]) {
+            // G Hub 使用 hidUsage 字段存储键码
+            const keyCode = parseInt(comp.keyboard.hidUsage) || comp.keyboard.hidCode || comp.keyboard.keyCode;
+            if (keyCode) {
                 actions.push({
                     delay: lastDelay,
                     keyStatus: comp.keyboard.isDown ? 0 : 1,
                     type: 1,
-                    keyCode: GHUB_TO_ATK_KEYCODE[keyCode]
+                    keyCode: GHUB_TO_ATK_KEYCODE[keyCode] || keyCode
                 });
             }
         } else if (comp.mouse?.button) {
