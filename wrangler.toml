@@ -2,9 +2,10 @@ name = "naraka-macro-viewer"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
-# 静态资源目录
-[site]
-bucket = "./public"
+# 允许导入文本文件
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css"]
 
 # D1 数据库绑定
 [[d1_databases]]

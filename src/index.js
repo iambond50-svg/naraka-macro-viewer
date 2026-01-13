@@ -2,6 +2,11 @@
  * 永劫无间宏查看器 - Cloudflare Workers + D1
  */
 
+// 内嵌的静态文件
+import indexHtml from '../public/index.html';
+import appJs from '../public/app.js';
+import styleCss from '../public/style.css';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -24,8 +29,27 @@ export default {
         return handleAPI(path, url, env, corsHeaders);
       }
 
-      // 静态文件
-      return env.ASSETS.fetch(request);
+      // 静态文件路由
+      if (path === '/' || path === '/index.html') {
+        return new Response(indexHtml, {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+      }
+
+      if (path === '/app.js') {
+        return new Response(appJs, {
+          headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
+        });
+      }
+
+      if (path === '/style.css') {
+        return new Response(styleCss, {
+          headers: { 'Content-Type': 'text/css; charset=utf-8' }
+        });
+      }
+
+      // 404
+      return new Response('Not Found', { status: 404 });
     } catch (error) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
