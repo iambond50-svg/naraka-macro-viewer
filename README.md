@@ -2,6 +2,8 @@
 
 Cloudflare Workers + D1 版本
 
+**示例网站**: https://naraka.warp.lat/
+
 ## 部署步骤
 
 ### 1. 安装依赖
