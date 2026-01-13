@@ -10,4 +10,4 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "naraka-macros"
-database_id = "YOUR_DATABASE_ID"  # 部署后替换为实际ID
+database_id = "fa14a154-2fb3-4a4d-b7ca-574281c160cb"
