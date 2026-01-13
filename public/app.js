@@ -93,6 +93,11 @@ function createMacroCard(macro) {
         keysHTML = renderSequence(macro.macro);
     }
     
+    // 只有SEQUENCE类型可以同步到ATK
+    const syncBtn = macroType === 'SEQUENCE' 
+        ? `<button class="card-sync-btn" onclick="event.stopPropagation(); syncSingleMacro('${macro.id}')">\ud83d\udd04 同步到ATK</button>`
+        : '';
+    
     return `
         <div class="macro-card" data-macro-id="${macro.id}" onclick="showMacroDetail('${macro.id}')">
             <div class="macro-header">
@@ -101,6 +106,7 @@ function createMacroCard(macro) {
             </div>
             <div class="macro-type">类型: ${macroType}</div>
             <div class="macro-keys">${keysHTML}</div>
+            ${syncBtn}
         </div>
     `;
 }
@@ -406,28 +412,6 @@ function closeModal() {
 
 // ===== ATK Hub 同步功能 =====
 
-let selectedMacroIds = new Set();
-
-// ATK设备配置
-const ATK_DEVICES = {
-    'ATK x QK Hex80': {
-        sessionStorage: '__demo_kb_summary_4471',
-        type: 'keyboard',
-        maxMacros: 16
-    },
-    'ATK F1 Ultimate 2.0': {
-        sessionStorage: '__demo_mouse_summary_4580-ATK F1 Ultimate 2.0',
-        localStorage: '__demo_mouse_summary_ATK F1 Ultimate 2.0',
-        type: 'mouse',
-        maxMacros: 8
-    },
-    'ATK RS6': {
-        sessionStorage: '__demo_mouse_summary_4252-ATK RS6',
-        type: 'mouse',
-        maxMacros: 8
-    }
-};
-
 // G Hub 到 ATK 键码映射
 const GHUB_TO_ATK_KEYCODE = {
     4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13,
@@ -447,7 +431,6 @@ function convertMacroToATK(macro) {
     const sequence = macro.macro?.sequence;
     if (!sequence) return null;
     
-    // 找到有效序列
     const seqTypes = ['simpleSequence', 'heldSequence', 'toggleSequence', 'pressSequence', 'releaseSequence'];
     let components = null;
     
@@ -496,268 +479,81 @@ function convertMacroToATK(macro) {
     };
 }
 
-// 打开同步模态窗口
-function openATKSyncModal() {
-    const modal = document.getElementById('atkSyncModal');
-    modal.classList.add('show');
-    
-    document.getElementById('syncScriptPreview').style.display = 'none';
-    document.getElementById('syncStatus').innerHTML = '';
-    selectedMacroIds.clear();
-    updateSelectedCount();
-    
-    renderMacroCheckboxList();
-    populateSyncCategoryFilter();
+// 显示提示消息
+function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('syncToast');
+    toast.textContent = message;
+    toast.className = 'sync-toast show ' + (isSuccess ? 'success' : 'error');
+    setTimeout(() => toast.className = 'sync-toast', 3000);
 }
 
-function closeATKSyncModal() {
-    document.getElementById('atkSyncModal').classList.remove('show');
-}
-
-// 渲染宏选择列表
-function renderMacroCheckboxList() {
-    const listContainer = document.getElementById('macroCheckboxList');
-    
-    // 只显示SEQUENCE类型的宏（可转换）
-    const convertibleMacros = allMacros.filter(m => m.macroType === 'SEQUENCE');
-    
-    if (convertibleMacros.length === 0) {
-        listContainer.innerHTML = '<div class="no-results">没有可转换的宏</div>';
+// 单个宏同步到ATK
+function syncSingleMacro(macroId) {
+    const macro = allMacros.find(m => m.id === macroId);
+    if (!macro) {
+        showToast('❌ 找不到宏数据', false);
         return;
     }
     
-    listContainer.innerHTML = convertibleMacros.map(macro => {
-        const isChecked = selectedMacroIds.has(macro.id) ? 'checked' : '';
-        const category = macro.category ? `<span class="macro-cat-tag">${escapeHtml(macro.category)}</span>` : '';
-        
-        return `
-            <label class="macro-checkbox-item" data-id="${macro.id}" data-category="${macro.category || ''}" data-name="${escapeHtml(macro.name)}">
-                <input type="checkbox" value="${macro.id}" ${isChecked} onchange="toggleMacroSelection('${macro.id}')">
-                <div class="macro-checkbox-info">
-                    <span class="macro-checkbox-name">${escapeHtml(macro.name)}</span>
-                    <span class="macro-checkbox-meta">${macro.macroType} ${category}</span>
-                </div>
-            </label>
-        `;
-    }).join('');
-}
-
-function populateSyncCategoryFilter() {
-    const categoryFilter = document.getElementById('syncCategoryFilter');
-    const categories = new Set();
-    
-    allMacros.filter(m => m.macroType === 'SEQUENCE').forEach(macro => {
-        if (macro.category) categories.add(macro.category);
-    });
-    
-    categoryFilter.innerHTML = '<option value="">全部分类</option>';
-    Array.from(categories).sort().forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat;
-        option.textContent = cat;
-        categoryFilter.appendChild(option);
-    });
-}
-
-function toggleMacroSelection(macroId) {
-    if (selectedMacroIds.has(macroId)) {
-        selectedMacroIds.delete(macroId);
-    } else {
-        selectedMacroIds.add(macroId);
-    }
-    updateSelectedCount();
-}
-
-function updateSelectedCount() {
-    document.getElementById('selectedMacroCount').textContent = selectedMacroIds.size;
-}
-
-function selectAllMacros() {
-    document.querySelectorAll('#macroCheckboxList .macro-checkbox-item:not([style*="display: none"])').forEach(item => {
-        const checkbox = item.querySelector('input[type="checkbox"]');
-        checkbox.checked = true;
-        selectedMacroIds.add(item.dataset.id);
-    });
-    updateSelectedCount();
-}
-
-function deselectAllMacros() {
-    document.querySelectorAll('#macroCheckboxList .macro-checkbox-item:not([style*="display: none"])').forEach(item => {
-        const checkbox = item.querySelector('input[type="checkbox"]');
-        checkbox.checked = false;
-        selectedMacroIds.delete(item.dataset.id);
-    });
-    updateSelectedCount();
-}
-
-function filterSyncMacros() {
-    const searchTerm = document.getElementById('syncSearchInput').value.toLowerCase();
-    const category = document.getElementById('syncCategoryFilter').value;
-    
-    document.querySelectorAll('#macroCheckboxList .macro-checkbox-item').forEach(item => {
-        const name = item.dataset.name.toLowerCase();
-        const itemCategory = item.dataset.category;
-        
-        const matchesSearch = !searchTerm || name.includes(searchTerm);
-        const matchesCategory = !category || itemCategory === category;
-        
-        item.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
-    });
-}
-
-// 生成同步脚本
-function generateSyncScript() {
-    const statusDiv = document.getElementById('syncStatus');
-    
-    if (selectedMacroIds.size === 0) {
-        statusDiv.innerHTML = '<div class="status-error">❌ 请至少选择一个宏</div>';
+    const atkMacro = convertMacroToATK(macro);
+    if (!atkMacro) {
+        showToast('❌ 该宏无法转换', false);
         return;
     }
     
-    // 转换选中的宏
-    const atkMacros = [];
-    selectedMacroIds.forEach(id => {
-        const macro = allMacros.find(m => m.id === id);
-        if (macro) {
-            const converted = convertMacroToATK(macro);
-            if (converted) atkMacros.push(converted);
-        }
-    });
+    // 生成同步代码
+    const script = generateSyncScript(atkMacro);
     
-    if (atkMacros.length === 0) {
-        statusDiv.innerHTML = '<div class="status-error">❌ 没有可转换的宏（只支持SEQUENCE类型）</div>';
-        return;
-    }
-    
-    const device = document.getElementById('syncDevice').value;
-    const mode = document.getElementById('syncMode').value;
-    const deviceInfo = ATK_DEVICES[device];
-    
-    let script;
-    if (deviceInfo.type === 'keyboard') {
-        script = generateKeyboardScript(atkMacros, deviceInfo.sessionStorage, mode);
-    } else {
-        script = generateMouseScript(atkMacros, deviceInfo.sessionStorage, mode);
-    }
-    
-    // 复制到剪贴板
     navigator.clipboard.writeText(script).then(() => {
-        document.getElementById('syncScriptContent').textContent = script;
-        document.getElementById('syncScriptPreview').style.display = 'block';
-        
-        const modeText = {replace: '替换', append: '追加', merge: '合并'}[mode];
-        statusDiv.innerHTML = `
-            <div class="status-success">
-                ✅ 同步代码已复制到剪贴板！<br>
-                <strong>共 ${atkMacros.length} 个宏</strong> | 目标: ${device} | 模式: ${modeText}<br>
-                <small>请到ATK Hub页面按F12打开控制台，粘贴执行</small>
-            </div>
-        `;
+        showToast(`✅ 「${macro.name}」同步代码已复制，请到ATK Hub控制台粘贴`);
     }).catch(err => {
-        statusDiv.innerHTML = `<div class="status-error">❌ 复制失败: ${err.message}</div>`;
+        showToast('❌ 复制失败: ' + err.message, false);
     });
 }
 
-function generateKeyboardScript(macros, storageKey, mode) {
-    const macrosJson = JSON.stringify(macros);
+// 生成同步代码
+function generateSyncScript(atkMacro) {
+    const macroJson = JSON.stringify(atkMacro);
     return `
 (function() {
-    const newMacros = ${macrosJson};
-    const storageKey = '${storageKey}';
-    const mode = '${mode}';
+    const newMacro = ${macroJson};
     
-    let data = sessionStorage.getItem(storageKey);
+    // 尝试查找设备数据
+    const keys = ['__demo_kb_summary_4471', '__demo_mouse_summary_4580-ATK F1 Ultimate 2.0', '__demo_mouse_summary_4252-ATK RS6'];
+    let storageKey = null;
+    let data = null;
+    
+    for (const key of keys) {
+        data = sessionStorage.getItem(key);
+        if (data) { storageKey = key; break; }
+    }
+    
     if (!data) {
-        console.error('❌ 未找到设备数据，请确保已进入演示模式并选择了键盘设备');
-        return { success: false, error: 'Device data not found' };
+        console.error('❌ 未找到设备数据，请确保已进入演示模式并选择了设备');
+        return { success: false };
     }
     
     try {
         const parsed = JSON.parse(data);
-        
         if (!parsed.deviceConfig) parsed.deviceConfig = {};
         if (!parsed.deviceConfig.macroList) parsed.deviceConfig.macroList = [];
         
-        let currentMacros = parsed.deviceConfig.macroList;
-        
-        if (mode === 'replace') {
-            const maxSlots = 16;
-            const defaultMacros = [];
-            for (let i = 0; i < maxSlots; i++) {
-                if (i < newMacros.length) {
-                    defaultMacros.push(newMacros[i]);
-                } else if (i < 8) {
-                    defaultMacros.push({ name: 'M' + (i + 1), type: 0, frequency: 1, actions: [] });
-                }
-            }
-            currentMacros = defaultMacros;
-        } else if (mode === 'append') {
-            currentMacros = [...currentMacros, ...newMacros];
-        } else if (mode === 'merge') {
-            const macroMap = new Map(currentMacros.map(m => [m.name, m]));
-            newMacros.forEach(m => macroMap.set(m.name, m));
-            currentMacros = Array.from(macroMap.values());
+        // 查找同名宏并替换，或追加到末尾
+        const idx = parsed.deviceConfig.macroList.findIndex(m => m.name === newMacro.name);
+        if (idx >= 0) {
+            parsed.deviceConfig.macroList[idx] = newMacro;
+            console.log('✅ 已替换宏: ' + newMacro.name);
+        } else {
+            parsed.deviceConfig.macroList.push(newMacro);
+            console.log('✅ 已添加宏: ' + newMacro.name);
         }
         
-        parsed.deviceConfig.macroList = currentMacros;
         sessionStorage.setItem(storageKey, JSON.stringify(parsed));
-        
-        console.log('✅ 宏同步成功!');
-        console.log('📝 共同步 ' + newMacros.length + ' 个宏');
         console.log('💡 刷新页面或切换到宏设置页面查看效果');
-        
-        return { success: true, count: newMacros.length, total: currentMacros.length };
+        return { success: true };
     } catch (e) {
         console.error('❌ 同步失败:', e);
-        return { success: false, error: e.message };
-    }
-})();
-`;
-}
-
-function generateMouseScript(macros, storageKey, mode) {
-    const macrosJson = JSON.stringify(macros);
-    return `
-(function() {
-    const newMacros = ${macrosJson};
-    const storageKey = '${storageKey}';
-    const mode = '${mode}';
-    
-    let data = sessionStorage.getItem(storageKey);
-    if (!data) {
-        console.error('❌ 未找到设备数据，请确保已进入演示模式并选择了鼠标设备');
-        return { success: false, error: 'Device data not found' };
-    }
-    
-    try {
-        const parsed = JSON.parse(data);
-        
-        if (!parsed.deviceConfig) parsed.deviceConfig = {};
-        if (!parsed.deviceConfig.macroList) parsed.deviceConfig.macroList = [];
-        
-        let currentMacros = parsed.deviceConfig.macroList;
-        
-        if (mode === 'replace') {
-            currentMacros = newMacros.slice(0, 8);
-        } else if (mode === 'append') {
-            currentMacros = [...currentMacros, ...newMacros].slice(0, 8);
-        } else if (mode === 'merge') {
-            const macroMap = new Map(currentMacros.map(m => [m.name, m]));
-            newMacros.forEach(m => macroMap.set(m.name, m));
-            currentMacros = Array.from(macroMap.values()).slice(0, 8);
-        }
-        
-        parsed.deviceConfig.macroList = currentMacros;
-        sessionStorage.setItem(storageKey, JSON.stringify(parsed));
-        
-        console.log('✅ 鼠标宏同步成功!');
-        console.log('📝 共同步 ' + newMacros.length + ' 个宏');
-        console.log('💡 刷新页面或切换到宏设置页面查看效果');
-        
-        return { success: true, count: newMacros.length, total: currentMacros.length };
-    } catch (e) {
-        console.error('❌ 同步失败:', e);
-        return { success: false, error: e.message };
+        return { success: false };
     }
 })();
 `;
@@ -777,18 +573,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('#macroModal .modal-close').addEventListener('click', closeModal);
     window.addEventListener('click', e => {
         if (e.target === document.getElementById('macroModal')) closeModal();
-        if (e.target === document.getElementById('atkSyncModal')) closeATKSyncModal();
     });
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeModal();
-            closeATKSyncModal();
-        }
+        if (e.key === 'Escape') closeModal();
     });
-    
-    // ATK同步
-    document.getElementById('syncATKBtn').addEventListener('click', openATKSyncModal);
-    document.getElementById('generateSyncBtn').addEventListener('click', generateSyncScript);
     
     // 加载数据
     loadMacroData();

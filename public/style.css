@@ -202,6 +202,58 @@ header h1 {
     border-top: 2px solid #f8f9fa;
 }
 
+.card-sync-btn {
+    display: block;
+    width: 100%;
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.card-sync-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+}
+
+/* Toast 提示 */
+.sync-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 15px 30px;
+    background: #333;
+    color: white;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 10000;
+    max-width: 90%;
+    text-align: center;
+}
+
+.sync-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.sync-toast.success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.sync-toast.error {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
 .key-display {
     display: inline-block;
     padding: 8px 15px;
