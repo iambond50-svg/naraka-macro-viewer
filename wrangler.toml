@@ -1,0 +1,13 @@
+name = "naraka-macro-viewer"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# 静态资源目录
+[site]
+bucket = "./public"
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "naraka-macros"
+database_id = "YOUR_DATABASE_ID"  # 部署后替换为实际ID

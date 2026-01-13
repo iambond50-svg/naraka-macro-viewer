@@ -1,0 +1,18 @@
+{
+  "name": "naraka-macro-viewer",
+  "version": "1.0.0",
+  "description": "永劫无间宏查看器 - Cloudflare Workers + D1",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create naraka-macros",
+    "db:init": "wrangler d1 execute naraka-macros --file=./schema.sql",
+    "db:import": "wrangler d1 execute naraka-macros --file=./data.sql"
+  },
+  "keywords": ["naraka", "macro", "cloudflare", "d1"],
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
