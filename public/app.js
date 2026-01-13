@@ -455,7 +455,7 @@ function convertMacroToATK(macro) {
                 actions.push({
                     delay: lastDelay,
                     keyStatus: comp.keyboard.isDown ? 0 : 1,
-                    type: 4,
+                    type: 1,
                     keyCode: GHUB_TO_ATK_KEYCODE[keyCode]
                 });
             }
@@ -463,7 +463,7 @@ function convertMacroToATK(macro) {
             actions.push({
                 delay: lastDelay,
                 keyStatus: comp.mouse.button.isDown ? 0 : 1,
-                type: 1,
+                type: 4,
                 keyCode: parseInt(comp.mouse.button.hidUsage) || 1
             });
         }
@@ -515,46 +515,63 @@ function syncSingleMacro(macroId) {
 function generateSyncScript(atkMacro) {
     const macroJson = JSON.stringify(atkMacro);
     return `
-(function() {
-    const newMacro = ${macroJson};
-    
-    // 尝试查找设备数据
+(async () => {
+  const log = (...args) => console.log('[naraka-sync]', ...args);
+  const newMacro = ${macroJson};
+
+  function upsert(list) {
+    const i = list.findIndex(m => m.name === newMacro.name);
+    if (i >= 0) list[i] = newMacro; else list.push(newMacro);
+  }
+
+  // 1) 真实设备：通过 Pinia 写入 InfoControllerStore.deviceData.deviceConfig.macroList
+  try {
+    const app = document.querySelector('#app')?.__vue_app__;
+    const pinia = app?.config?.globalProperties?.$pinia;
+    const infoStore = pinia?._s?.get('InfoControllerStore');
+    const state = infoStore?.$state;
+    const deviceData = state?.deviceData;
+    if (deviceData?.deviceConfig) {
+      deviceData.deviceConfig.macroList = deviceData.deviceConfig.macroList || [];
+      upsert(deviceData.deviceConfig.macroList);
+      if (typeof infoStore.setDeviceData === 'function') {
+        infoStore.setDeviceData(deviceData);
+      } else if (typeof infoStore.$patch === 'function') {
+        infoStore.$patch(s => { s.deviceData = deviceData; });
+      }
+      // 尝试自动点击“保存”按钮（如存在）
+      try {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const saveBtn = btns.find(b => /保存/.test(b.textContent || ''));
+        if (saveBtn) saveBtn.click();
+      } catch (_) {}
+      log('✅ 已写入宏到真实设备配置: ' + newMacro.name + '。若未自动保存，请手动点击“保存”。');
+      return { success: true, mode: 'real', count: deviceData.deviceConfig.macroList.length };
+    }
+  } catch (e) {
+    log('real-device path failed', e);
+  }
+
+  // 2) 演示模式回退：写入 sessionStorage 中的演示设备数据
+  try {
     const keys = ['__demo_kb_summary_4471', '__demo_mouse_summary_4580-ATK F1 Ultimate 2.0', '__demo_mouse_summary_4252-ATK RS6'];
-    let storageKey = null;
-    let data = null;
-    
     for (const key of keys) {
-        data = sessionStorage.getItem(key);
-        if (data) { storageKey = key; break; }
+      const raw = sessionStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      parsed.deviceConfig = parsed.deviceConfig || {};
+      parsed.deviceConfig.macroList = parsed.deviceConfig.macroList || [];
+      upsert(parsed.deviceConfig.macroList);
+      sessionStorage.setItem(key, JSON.stringify(parsed));
+      log('✅ 已写入宏到演示设备配置: ' + newMacro.name);
+      return { success: true, mode: 'demo', count: parsed.deviceConfig.macroList.length };
     }
-    
-    if (!data) {
-        console.error('❌ 未找到设备数据，请确保已进入演示模式并选择了设备');
-        return { success: false };
-    }
-    
-    try {
-        const parsed = JSON.parse(data);
-        if (!parsed.deviceConfig) parsed.deviceConfig = {};
-        if (!parsed.deviceConfig.macroList) parsed.deviceConfig.macroList = [];
-        
-        // 查找同名宏并替换，或追加到末尾
-        const idx = parsed.deviceConfig.macroList.findIndex(m => m.name === newMacro.name);
-        if (idx >= 0) {
-            parsed.deviceConfig.macroList[idx] = newMacro;
-            console.log('✅ 已替换宏: ' + newMacro.name);
-        } else {
-            parsed.deviceConfig.macroList.push(newMacro);
-            console.log('✅ 已添加宏: ' + newMacro.name);
-        }
-        
-        sessionStorage.setItem(storageKey, JSON.stringify(parsed));
-        console.log('💡 刷新页面或切换到宏设置页面查看效果');
-        return { success: true };
-    } catch (e) {
-        console.error('❌ 同步失败:', e);
-        return { success: false };
-    }
+  } catch (e) {
+    log('demo path failed', e);
+  }
+
+  console.error('❌ 未找到 ATK Hub 运行环境或设备数据。请确认已打开 hub.atk.pro 并连接设备或进入演示模式。');
+  return { success: false };
 })();
 `;
 }
