@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>永劫无间宏键位查看器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 永劫无间宏键位查看器</h1>
+            <p class="subtitle">查看和搜索宏键位配置 | 一键同步到ATK Hub</p>
+        </header>
+
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索宏名称或按键...">
+                <button id="searchBtn">🔍 搜索</button>
+            </div>
+            <div class="filter-box">
+                <label for="categoryFilter">分类筛选：</label>
+                <select id="categoryFilter">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="export-box">
+                <button id="syncATKBtn" class="export-btn sync-btn">🔄 同步到ATK Hub</button>
+            </div>
+            <div class="stats">
+                <span id="totalCount">总计: 0 个宏</span>
+                <span id="filteredCount"></span>
+            </div>
+        </div>
+
+        <div id="macroList" class="macro-list">
+            <div class="loading">正在加载宏数据...</div>
+        </div>
+    </div>
+
+    <!-- 详细信息模态窗口 -->
+    <div id="macroModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">宏详细信息</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody">
+            </div>
+        </div>
+    </div>
+
+    <!-- ATK Hub同步模态窗口 -->
+    <div id="atkSyncModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>🔄 同步到 ATK Hub</h2>
+                <span class="modal-close" onclick="closeATKSyncModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="sync-instructions">
+                    <h3>📋 使用说明</h3>
+                    <ol>
+                        <li>先打开 <a href="https://hub.atk.pro/" target="_blank" class="link-atk">ATK Hub</a> 并进入演示模式</li>
+                        <li>在下方勾选要同步的宏</li>
+                        <li>点击"复制同步代码"，然后在ATK Hub控制台(F12)粘贴执行</li>
+                    </ol>
+                </div>
+                
+                <div class="sync-options">
+                    <div class="sync-option-row">
+                        <div class="sync-option">
+                            <label for="syncDevice">目标设备:</label>
+                            <select id="syncDevice">
+                                <option value="ATK x QK Hex80">ATK x QK Hex80 (键盘)</option>
+                                <option value="ATK F1 Ultimate 2.0">ATK F1 Ultimate 2.0 (鼠标)</option>
+                                <option value="ATK RS6">ATK RS6 (鼠标)</option>
+                            </select>
+                        </div>
+                        <div class="sync-option">
+                            <label for="syncMode">同步模式:</label>
+                            <select id="syncMode">
+                                <option value="replace">替换模式</option>
+                                <option value="append">追加模式</option>
+                                <option value="merge">合并模式</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 宏选择区域 -->
+                <div class="macro-selection">
+                    <div class="selection-header">
+                        <h4>🎮 选择要同步的宏</h4>
+                        <div class="selection-actions">
+                            <button class="btn-sm" onclick="selectAllMacros()">全选</button>
+                            <button class="btn-sm" onclick="deselectAllMacros()">取消全选</button>
+                            <span class="selected-count">已选: <strong id="selectedMacroCount">0</strong> 个</span>
+                        </div>
+                    </div>
+                    <div class="macro-filter">
+                        <input type="text" id="syncSearchInput" placeholder="搜索宏名称..." oninput="filterSyncMacros()">
+                        <select id="syncCategoryFilter" onchange="filterSyncMacros()">
+                            <option value="">全部分类</option>
+                        </select>
+                    </div>
+                    <div class="macro-checkbox-list" id="macroCheckboxList">
+                        <div class="loading">正在加载宏列表...</div>
+                    </div>
+                </div>
+                
+                <div class="sync-actions">
+                    <button id="generateSyncBtn" class="btn btn-primary">📋 复制同步代码</button>
+                    <button id="openATKHubBtn" class="btn btn-secondary" onclick="window.open('https://hub.atk.pro/', '_blank')">🌐 打开ATK Hub</button>
+                </div>
+                
+                <div id="syncScriptPreview" class="sync-preview" style="display: none;">
+                    <h4>同步代码 (已复制到剪贴板):</h4>
+                    <pre id="syncScriptContent"></pre>
+                </div>
+                
+                <div class="sync-status" id="syncStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
