@@ -2,10 +2,7 @@
  * 永劫无间宏查看器 - Cloudflare Workers + D1
  */
 
-// 内嵌的静态文件
-import indexHtml from '../public/index.html';
-import appJs from '../public/app.js';
-import styleCss from '../public/style.css';
+import { INDEX_HTML, APP_JS, STYLE_CSS } from './static.js';
 
 export default {
   async fetch(request, env) {
@@ -31,19 +28,19 @@ export default {
 
       // 静态文件路由
       if (path === '/' || path === '/index.html') {
-        return new Response(indexHtml, {
+        return new Response(INDEX_HTML, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
       }
 
       if (path === '/app.js') {
-        return new Response(appJs, {
+        return new Response(APP_JS, {
           headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
         });
       }
 
       if (path === '/style.css') {
-        return new Response(styleCss, {
+        return new Response(STYLE_CSS, {
           headers: { 'Content-Type': 'text/css; charset=utf-8' }
         });
       }
